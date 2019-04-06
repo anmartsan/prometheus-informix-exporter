@@ -1,0 +1,11 @@
+---
+servers:
+- name: pruebaids
+  informixserver: prueba
+  user: informix
+  password: informix
+  
+- name: pruebaids2
+  informixserver: prueba2
+  user: informix
+  password: informix

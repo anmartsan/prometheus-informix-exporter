@@ -1,0 +1,60 @@
+version: '2'
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+networks:
+  front-tier:
+    driver: bridge
+  back-tier:
+    driver: bridge
+
+services:
+  prometheus:
+    restart: unless-stopped
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - 9090:9090
+ #   links:
+ #     - cadvisor:cadvisor
+ #     - alertmanager:alertmanager
+ #   depends_on:
+ #     - cadvisor
+    networks:
+      - back-tier
+  grafana:
+    restart: unless-stopped
+    image: grafana/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    env_file:
+      - config.monitoring
+    networks:
+      - back-tier
+      - front-tier
+  ids_exporter:
+    restart: unless-stopped
+    image: antonio/informix-exporter
+    depends_on:
+      - prometheus
+    ports:
+      - 8080:8080
+    volumes:
+      - ./exporter:/opt/exporter
+    networks:
+      - back-tier

@@ -49,7 +49,7 @@ services:
       - front-tier
   ids_exporter:
     restart: unless-stopped
-    image: antonio/informix-exporter
+    image: anmartsan/informix-exporter
     depends_on:
       - prometheus
     ports:
@@ -58,3 +58,15 @@ services:
       - ./exporter:/opt/exporter
     networks:
       - back-tier
+#  alertmanager:
+#    restart: unless-stopped
+#    image: prom/alertmanager
+#    ports:
+#      - 9093:9093
+#    volumes:
+#      - ./alertmanager/:/etc/alertmanager/
+#    networks:
+#      - back-tier
+#    command:
+#      - '--config.file=/etc/alertmanager/config.yml'
+#      - '--storage.path=/alertmanager'

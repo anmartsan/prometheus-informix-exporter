@@ -18,11 +18,9 @@ import (
 )
 
 var (
-	configfile = flag.String(
-		"configfile", "config.yaml",
-		"Fichero de configuracion",
-	)
-	Instances *Configuration
+	configfile = flag.String("configfile", "config.yaml", "Configuration File")
+	puerto     = flag.String("port", "8080", "Listen Port")
+	Instances  *Configuration
 )
 
 type Instance struct {
@@ -72,7 +70,7 @@ func (e *Exporter) scrape() {
 	for _, m := range e.metricas {
 		err := m.Scrape()
 		if err != nil {
-			log.Println("Error en el scrape")
+			log.Println("Error in scrape data")
 		}
 
 	}
@@ -121,7 +119,7 @@ func main() {
 	var err error
 	Instances, err = loadConfig(configfile)
 	if err != nil {
-		log.Fatal("Error en Yaml:", err)
+		log.Fatal("Error en  fichero Yaml:", err)
 
 	}
 	fmt.Println(Instances)
@@ -129,9 +127,9 @@ func main() {
 	exporter := NewExporter()
 	prometheus.MustRegister(exporter)
 
-	log.Println("Arrancando servidor")
+	log.Println("Arrancando servidor en puerto:", *puerto)
 	http.Handle("/metrics", promhttp.Handler())
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":"+*puerto, nil))
 	os.Exit(0)
 
 }

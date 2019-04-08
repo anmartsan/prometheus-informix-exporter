@@ -10,9 +10,11 @@ import (
 )
 
 type chunkmetrics struct {
-	path   string
-	reads  int64
-	writes int64
+	path      string
+	reads     int64
+	writes    int64
+	readtime  float64
+	writetime float64
 }
 
 type DbspaceMetrics struct {
@@ -68,7 +70,9 @@ func (d *DbspaceMetrics) Scrape() error {
 		for i := range c {
 
 			d.metrics.WithLabelValues(Instances.Servers[m].Name, c[i].path, "reads").Set(float64(c[i].reads))
-			d.metrics.WithLabelValues(Instances.Servers[m].Name, c[i].path, "writes").Set(float64(c[i].reads))
+			d.metrics.WithLabelValues(Instances.Servers[m].Name, c[i].path, "writes").Set(float64(c[i].writes))
+			d.metrics.WithLabelValues(Instances.Servers[m].Name, c[i].path, "readtime").Set(c[i].readtime)
+			d.metrics.WithLabelValues(Instances.Servers[m].Name, c[i].path, "writetime").Set(c[i].writetime)
 
 		}
 	}
@@ -82,20 +86,22 @@ func getChunks(Instancia Instance) []*chunkmetrics {
 		fname        string
 		pagesread    int64
 		pageswritten int64
+		readtime     float64
+		writetime    float64
 	)
 	var err error
 
 	res := []*chunkmetrics{}
 	c := new(chunkmetrics)
 
-	rows, err := Instancia.db.Query("select fname,pagesread,pageswritten from syschktab ")
+	rows, err := Instancia.db.Query("select fname,pagesread,pageswritten,readtime,writetime from syschktab ")
 
 	if err != nil {
 		log.Fatal("Error en Query: \n", err)
 	}
 
 	for rows.Next() {
-		err := rows.Scan(&fname, &pagesread, &pageswritten)
+		err := rows.Scan(&fname, &pagesread, &pageswritten, &readtime, &writetime)
 
 		if err != nil {
 			log.Fatal("Error en Scan", err)
@@ -103,6 +109,8 @@ func getChunks(Instancia Instance) []*chunkmetrics {
 		c.path = strings.TrimSpace(fname)
 		c.reads = pagesread
 		c.writes = pageswritten
+		c.readtime = readtime
+		c.writetime = writetime
 		res = append(res, c)
 		c = new(chunkmetrics)
 

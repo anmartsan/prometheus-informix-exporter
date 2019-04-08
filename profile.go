@@ -44,6 +44,9 @@ var (
 		"locks_with_waiter":   metric{Name: "locks_with_waiter", Help: "Total locks with waiters"},
 		"logs_without_backup": metric{Name: "logs_without_backup", Help: "Logs without backup"},
 		"net_connects":        metric{Name: "net_connects", Help: "Number of connects"},
+		"ckptotal":            metric{Name: "ckptotal", Help: "Total time chekcpoints"},
+		"dskflush_per_sec":    metric{Name: "dskflush_per_sec", Help: "Total disk flush ckp"},
+		"n_dirty_buffs":       metric{Name: "n_dirty_buffs", Help: "Total dirty buffers checkpoints"},
 	}
 )
 
@@ -69,19 +72,22 @@ func NewprofileMetrics() *ProfileMetrics {
 func queryprofile(p *ProfileMetrics, Instancia Instance) {
 
 	var (
-		name   string
-		value  float64
-		open   float64
-		locks  float64
-		locksw float64
-		logs   float64
+		name             string
+		value            float64
+		open             float64
+		locks            float64
+		locksw           float64
+		logs             float64
+		timeckp          float64
+		dskflush_per_sec float64
+		n_dirty_buffs    float64
 	)
 
 	var err error
 	rows, err := Instancia.db.Query("select name,value from sysshmhdr ")
 
 	if err != nil {
-		log.Fatal("Error en Query: \n", err)
+		log.Fatal("Error in  Query: \n", err)
 	}
 	defer rows.Close()
 
@@ -90,7 +96,7 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) {
 		err := rows.Scan(&name, &value)
 
 		if err != nil {
-			log.Fatal("Error en Scan", err)
+			log.Fatal("Error in Scan", err)
 		}
 		if _, ok := p.metrics[strings.TrimSpace(name)]; ok {
 			p.metrics[strings.TrimSpace(name)].WithLabelValues(Instancia.Name).Set(value)
@@ -110,14 +116,14 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) {
 	`)
 
 	if err != nil {
-		log.Fatal("Error en Query: \n", err)
+		log.Fatal("Error in Query: \n", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&open, &locks, &locksw)
 		if err != nil {
-			log.Fatal("Error en Scan", err)
+			log.Fatal("Error in Scan", err)
 		}
 		p.metrics["open_transactions"].WithLabelValues(Instancia.Name).Set(open)
 		p.metrics["total_locks"].WithLabelValues(Instancia.Name).Set(locks)
@@ -128,17 +134,41 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) {
 	rows, err = Instancia.db.Query(`select count(*) as logssinbackup from syslogs where is_backed_up=0 `)
 
 	if err != nil {
-		log.Fatal("Error en Query: \n", err)
+		log.Fatal("Error in Query: \n", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&logs)
 		if err != nil {
-			log.Fatal("Error en Scan", err)
+			log.Fatal("Error in Scan", err)
 		}
 
 		p.metrics["logs_without_backup"].WithLabelValues(Instancia.Name).Set(logs)
+
+	}
+	rows.Close()
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err = Instancia.db.Query(`select first 1  cp_time::decimal(4,2) as ckptotal,n_dirty_buffs,dskflush_per_sec  from syscheckpoint order by intvl desc `)
+
+	if err != nil {
+		log.Fatal("Error in Query: \n", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&timeckp, &n_dirty_buffs, &dskflush_per_sec)
+		if err != nil {
+			log.Fatal("Error in Scan", err)
+		}
+
+		p.metrics["ckptotal"].WithLabelValues(Instancia.Name).Set(timeckp)
+		p.metrics["n_dirty_buffs"].WithLabelValues(Instancia.Name).Set(n_dirty_buffs)
+		p.metrics["dskflush_per_sec"].WithLabelValues(Instancia.Name).Set(dskflush_per_sec)
 
 	}
 	rows.Close()
@@ -161,7 +191,7 @@ func (p *ProfileMetrics) Scrape() error {
 		err = Instances.Servers[m].db.Ping()
 		if err != nil {
 			Instances.Servers = append(Instances.Servers[:m], Instances.Servers[m+1:]...)
-			log.Println("Error en Open Database: ", err)
+			log.Println("Error in Open Database: ", err)
 		}
 	}
 

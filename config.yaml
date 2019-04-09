@@ -4,8 +4,12 @@ servers:
   informixserver: prueba
   user: informix
   password: informix
-  
 - name: pruebaids2
   informixserver: prueba2
   user: informix
   password: informix
+custom: 
+- query: select tabid from systables where tabid=99 
+  response: tabid
+
+  

@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -33,6 +32,10 @@ type Instance struct {
 
 type Configuration struct {
 	Servers []Instance `yaml:"servers"`
+	Custom  []struct {
+		Query    string `yaml:"query"`
+		Response string `yaml:"response"`
+	} `yaml:"custom"`
 }
 type metric struct {
 	Name string
@@ -46,8 +49,7 @@ type Coleccion interface {
 }
 
 type Exporter struct {
-	m sync.Mutex
-
+	m        sync.Mutex
 	metricas []Coleccion
 }
 
@@ -58,6 +60,7 @@ func NewExporter() *Exporter {
 		metricas: []Coleccion{
 			NewprofileMetrics(),
 			NewdbspaceMetrics(),
+			NewcustomMetrics(),
 		},
 	}
 
@@ -109,7 +112,7 @@ func loadConfig(filename *string) (*Configuration, error) {
 
 		return &Configuration{}, err
 	}
-	fmt.Println(c)
+
 	return &c, nil
 }
 
@@ -118,11 +121,11 @@ func main() {
 	flag.Parse()
 	var err error
 	Instances, err = loadConfig(configfile)
+
 	if err != nil {
 		log.Fatal("Error en  fichero Yaml:", err)
 
 	}
-	fmt.Println(Instances)
 
 	exporter := NewExporter()
 	prometheus.MustRegister(exporter)

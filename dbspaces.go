@@ -63,7 +63,7 @@ func (d *DbspaceMetrics) Scrape() error {
 			Instances.Servers[m].db.Close()
 		}
 	}()
-	//defer db.Close()
+
 	c := []*chunkmetrics{}
 	for m, _ := range Instances.Servers {
 		c = getChunks(Instances.Servers[m])

@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -51,8 +52,17 @@ func (d *DbspaceMetrics) Scrape() error {
 
 	for m, _ := range Instances.Servers {
 		connect := "DSN=" + Instances.Servers[m].Informixserver
-		Instances.Servers[m].db, err = sql.Open("odbc", connect)
-		err = Instances.Servers[m].db.Ping()
+		for intentos := 0; intentos < 3; intentos++ {
+
+			Instances.Servers[m].db, err = sql.Open("odbc", connect)
+			err = Instances.Servers[m].db.Ping()
+			if err != nil {
+				time.Sleep(1 * time.Second)
+
+			} else {
+				break
+			}
+		}
 		if err != nil {
 			Instances.Servers = append(Instances.Servers[:m], Instances.Servers[m+1:]...)
 			log.Println("Error en Open Database: ", err)

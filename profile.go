@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -87,7 +88,7 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) {
 	rows, err := Instancia.db.Query("select name,value from sysshmhdr ")
 
 	if err != nil {
-		log.Fatal("Error in  Query: \n", err)
+		log.Fatal("Error in  Query sysshmhdr: \n", err)
 	}
 	defer rows.Close()
 
@@ -116,7 +117,7 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) {
 	`)
 
 	if err != nil {
-		log.Fatal("Error in Query: \n", err)
+		log.Fatal("Error in Query transaction: \n", err)
 	}
 	defer rows.Close()
 
@@ -134,7 +135,7 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) {
 	rows, err = Instancia.db.Query(`select count(*) as logssinbackup from syslogs where is_backed_up=0 `)
 
 	if err != nil {
-		log.Fatal("Error in Query: \n", err)
+		log.Fatal("Error in Query logs: \n", err)
 	}
 	defer rows.Close()
 
@@ -153,10 +154,10 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) {
 		log.Fatal(err)
 	}
 
-	rows, err = Instancia.db.Query(`select first 1  cp_time::decimal(4,2) as ckptotal,n_dirty_buffs,dskflush_per_sec  from syscheckpoint order by intvl desc `)
+	rows, err = Instancia.db.Query(`select first 1  cp_time::decimal(8,4) as ckptotal,n_dirty_buffs,dskflush_per_sec  from syscheckpoint order by intvl desc `)
 
 	if err != nil {
-		log.Fatal("Error in Query: \n", err)
+		log.Fatal("Error in Query ckp: \n", err)
 	}
 	defer rows.Close()
 
@@ -187,8 +188,18 @@ func (p *ProfileMetrics) Scrape() error {
 
 	for m, _ := range Instances.Servers {
 		connect := "DSN=" + Instances.Servers[m].Informixserver
-		Instances.Servers[m].db, err = sql.Open("odbc", connect)
-		err = Instances.Servers[m].db.Ping()
+		for intentos := 0; intentos < 3; intentos++ {
+
+			Instances.Servers[m].db, err = sql.Open("odbc", connect)
+			err = Instances.Servers[m].db.Ping()
+			if err != nil {
+				time.Sleep(1 * time.Second)
+
+			} else {
+				break
+			}
+		}
+
 		if err != nil {
 			Instances.Servers = append(Instances.Servers[:m], Instances.Servers[m+1:]...)
 			log.Println("Error in Open Database: ", err)

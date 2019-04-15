@@ -18,9 +18,15 @@ type chunkmetrics struct {
 	writetime float64
 }
 
+type dbsmetrics struct {
+	name   string
+	freemb float64
+}
+
 type DbspaceMetrics struct {
 	mutex   sync.Mutex
 	metrics *prometheus.GaugeVec
+	space   *prometheus.GaugeVec
 }
 
 func NewdbspaceMetrics() *DbspaceMetrics {
@@ -31,6 +37,11 @@ func NewdbspaceMetrics() *DbspaceMetrics {
 			Name:      "chunk_metrics",
 			Help:      "Metricas por Chunks",
 		}, []string{"informixserver", "chunk", "metrica"}),
+		space: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "informix",
+			Name:      "dbspace_metrics",
+			Help:      "Metricas por Dbspace",
+		}, []string{"informixserver", "dbspace", "metrica"}),
 	}
 
 }
@@ -87,6 +98,16 @@ func (d *DbspaceMetrics) Scrape() error {
 		}
 	}
 
+	f := []*dbsmetrics{}
+	for m, _ := range Instances.Servers {
+		f = freeDbs(Instances.Servers[m])
+		for i := range f {
+
+			d.metrics.WithLabelValues(Instances.Servers[m].Name, f[i].name, "FreeMB").Set(float64(f[i].freemb))
+
+		}
+	}
+
 	return nil
 }
 
@@ -123,6 +144,62 @@ func getChunks(Instancia Instance) []*chunkmetrics {
 		c.writetime = writetime
 		res = append(res, c)
 		c = new(chunkmetrics)
+
+	}
+	defer rows.Close()
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return res
+
+}
+
+func freeDbs(Instancia Instance) []*dbsmetrics {
+
+	var (
+		dbspace  string
+		mblibres float64
+	)
+	var err error
+
+	res := []*dbsmetrics{}
+	c := new(dbsmetrics)
+
+	rows, err := Instancia.db.Query(`select
+	dbs.name[1,20] dbspace, 
+	round(SUM(chk.nfree)*2/1024,2) MBlibres
+	
+	from sysdbspaces dbs, syschunks chk
+	where dbs.dbsnum=chk.dbsnum and is_sbchunk <> 1
+	group by dbs.name
+	UNION
+	select
+	dbs.name[1,20] dbspace, 
+	round(SUM(chk.udfree)*2/1024,2) MBlibres
+	
+	from sysdbspaces dbs, syschunks chk
+	where dbs.dbsnum=chk.dbsnum and is_sbchunk=1
+	group by dbs.name
+	order by 1;
+	`)
+
+	if err != nil {
+		log.Fatal("Error en Query: \n", err)
+	}
+
+	for rows.Next() {
+		err := rows.Scan(&dbspace, &mblibres)
+
+		if err != nil {
+			log.Fatal("Error en Scan", err)
+		}
+		c.name = strings.TrimSpace(dbspace)
+		c.freemb = mblibres
+
+		res = append(res, c)
+		c = new(dbsmetrics)
 
 	}
 	defer rows.Close()

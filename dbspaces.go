@@ -186,14 +186,14 @@ func freeDbs(Instancia Instance) []*dbsmetrics {
 	`)
 
 	if err != nil {
-		log.Fatal("Error en Query: \n", err)
+		log.Println("Error en Query: \n", err)
 	}
 
 	for rows.Next() {
 		err := rows.Scan(&dbspace, &mblibres)
 
 		if err != nil {
-			log.Fatal("Error en Scan", err)
+			log.Println("Error en Scan", err)
 		}
 		c.name = strings.TrimSpace(dbspace)
 		c.freemb = mblibres

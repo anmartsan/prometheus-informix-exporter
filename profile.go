@@ -119,6 +119,7 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) error {
 
 	if err != nil {
 		log.Println("Error in Query transaction: \n", err)
+		return err
 	}
 	defer rows.Close()
 
@@ -138,6 +139,7 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) error {
 
 	if err != nil {
 		log.Println("Error in Query logs: \n", err)
+		return err
 	}
 	defer rows.Close()
 
@@ -157,10 +159,11 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) error {
 		log.Fatal(err)
 	}
 
-	rows, err = Instancia.db.Query(`select first 1  cp_time::decimal(8,4) as ckptotal,n_dirty_buffs,dskflush_per_sec  from syscheckpoint order by intvl desc `)
+	rows, err = Instancia.db.Query(`select first 1  cp_time::decimal(10,2) as ckptotal,n_dirty_buffs,dskflush_per_sec  from syscheckpoint order by intvl desc `)
 
 	if err != nil {
 		log.Println("Error in Query ckp: \n", err)
+		return err
 	}
 	defer rows.Close()
 

@@ -120,8 +120,8 @@ func main() {
 
 	flag.Parse()
 	var err error
+	log.Println("Cargando fichero de configuracion:")
 	Instances, err = loadConfig(configfile)
-
 	if err != nil {
 		log.Fatal("Error en  fichero Yaml:", err)
 

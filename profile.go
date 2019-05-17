@@ -196,7 +196,8 @@ func (p *ProfileMetrics) Scrape() error {
 
 	for m, _ := range Instances.Servers {
 		connect := "DSN=" + Instances.Servers[m].Informixserver
-		for intentos := 0; intentos < 3; intentos++ {
+		log.Println("Conectando a DSN", connect)
+		for intentos := 0; intentos < 5; intentos++ {
 
 			Instances.Servers[m].db, err = sql.Open("odbc", connect)
 			err = Instances.Servers[m].db.Ping()
@@ -216,10 +217,12 @@ func (p *ProfileMetrics) Scrape() error {
 
 	defer func() {
 		for m, _ := range Instances.Servers {
+			log.Println("Cerrando DSN", m)
 			Instances.Servers[m].db.Close()
 		}
 	}()
 	for m, _ := range Instances.Servers {
+		log.Println("Ejecutando Querys:", m)
 		queryprofile(p, Instances.Servers[m])
 	}
 	return nil

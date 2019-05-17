@@ -63,6 +63,7 @@ func (d *DbspaceMetrics) Scrape() error {
 
 	for m, _ := range Instances.Servers {
 		connect := "DSN=" + Instances.Servers[m].Informixserver
+		log.Println("Conectando a DSN", connect)
 		for intentos := 0; intentos < 3; intentos++ {
 
 			Instances.Servers[m].db, err = sql.Open("odbc", connect)
@@ -81,12 +82,14 @@ func (d *DbspaceMetrics) Scrape() error {
 	}
 	defer func() {
 		for m, _ := range Instances.Servers {
+			log.Println("Cerrando DSN", m)
 			Instances.Servers[m].db.Close()
 		}
 	}()
 
 	c := []*chunkmetrics{}
 	for m, _ := range Instances.Servers {
+		log.Println("Ejecutando Querys:", m)
 		c = getChunks(Instances.Servers[m])
 		for i := range c {
 

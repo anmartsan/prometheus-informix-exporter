@@ -1,0 +1,15 @@
+---
+servers:
+- name: pruebaids
+  informixserver: prueba
+  user: informix
+  password: Amsa2000!
+- name: pruebaids2
+  informixserver: prueba2
+  user: informix
+  password: Amsa2000!
+custom: 
+- query: select tabid from systables where tabid=99 
+  response: tabid
+
+  

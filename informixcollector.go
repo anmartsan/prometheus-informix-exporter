@@ -18,7 +18,7 @@ import (
 
 var (
 	configfile = flag.String("configfile", "config.yaml", "Configuration File")
-	puerto     = flag.String("port", "8080", "Listen Port")
+	puerto     = flag.String("port", "8087", "Listen Port")
 	Instances  *Configuration
 )
 
@@ -130,7 +130,7 @@ func main() {
 	exporter := NewExporter()
 	prometheus.MustRegister(exporter)
 
-	log.Println("Arrancando servidor V0.1 en puerto:", *puerto)
+	log.Println("Arrancando servidor V0.3 en puerto:", *puerto)
 	http.Handle("/metrics", promhttp.Handler())
 	log.Fatal(http.ListenAndServe(":"+*puerto, nil))
 	os.Exit(0)

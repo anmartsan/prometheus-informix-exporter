@@ -128,7 +128,7 @@ func main() {
 	exporter := NewExporter()
 	prometheus.MustRegister(exporter)
 
-	log.Println("Arrancando servidor V0.1 en puerto:", *puerto)
+	log.Println("Arrancando servidor V0.2 en puerto:", *puerto)
 	http.Handle("/metrics", promhttp.Handler())
 	log.Fatal(http.ListenAndServe(":"+*puerto, nil))
 	os.Exit(0)

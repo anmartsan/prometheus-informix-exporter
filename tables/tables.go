@@ -48,7 +48,7 @@ func querytables(p *TablesMetrics, Instancia Instance) error {
 	rows, err := Instancia.db.Query(`select tabname[1,20], count(*)
 	from sysmaster:sysextents e
 	group by dbsname,tabname
-	having count(*)>150
+	having count(*)>180
 	order by 1,2
 	`)
 
@@ -80,7 +80,7 @@ func querytables(p *TablesMetrics, Instancia Instance) error {
 
 	rows, err = Instancia.db.Query(`select  tabname,size from sysextents
 	group by 1,2
-	having sum(size) > 10000000
+	having sum(size) > 14000000
 	`)
 
 	if err != nil {

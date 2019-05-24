@@ -29,6 +29,8 @@ var (
 		"pf_pagreads":         metric{Name: "pf_pagreads", Help: "Total page reads"},
 		"pf_btradata":         metric{Name: "pf_btradata", Help: "Total pf_btradata"},
 		"pf_rapgs_used":       metric{Name: "pf_rapgs_used", Help: "Total pf_rapgs_used"},
+		"pf_btraidx":          metric{Name: "btraidx", Help: "Read Ahead Index"},
+		"pf_dpra":             metric{Name: "dpra", Help: "dpra"},
 		"pf_seqscans":         metric{Name: "pf_seqscans", Help: "Total secuencial scans"},
 		"pagreads_2K":         metric{Name: "pagreads_2K", Help: "Total paginas leidas 2k"},
 		"bufreads_2K":         metric{Name: "bufreads_2K", Help: "Total buffer reads 2k"},
@@ -48,6 +50,13 @@ var (
 		"ckptotal":            metric{Name: "ckptotal", Help: "Total time chekcpoints"},
 		"dskflush_per_sec":    metric{Name: "dskflush_per_sec", Help: "Total disk flush ckp"},
 		"n_dirty_buffs":       metric{Name: "n_dirty_buffs", Help: "Total dirty buffers checkpoints"},
+		"LastHdrPing":         metric{Name: "LastHdrPing", Help: "Last HDR ping"},
+		"LastBackup":          metric{Name: "LastHdrPing", Help: "Last HDR ping"},
+		"brt_2048":            metric{Name: "btr_2048", Help: "BTR Ratio 2048"},
+		"brt_16384":           metric{Name: "btr_16384", Help: "BTR Ratio 16384"},
+		"pf_totalsorts":       metric{Name: "pf_totalsorts", Help: "Total Sorts"},
+		"pf_memsorts":         metric{Name: "pf_memsorts", Help: "Mem sorts"},
+		"pf_disksorts":        metric{Name: "pf_disksorts", Help: "Disk sorts"},
 	}
 )
 
@@ -82,6 +91,9 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) error {
 		timeckp          float64
 		dskflush_per_sec float64
 		n_dirty_buffs    float64
+		hdrping          float64
+		LastBackup       float64
+		btr_ratio        float64
 	)
 
 	var err error
@@ -177,6 +189,85 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) error {
 		p.metrics["ckptotal"].WithLabelValues(Instancia.Name).Set(timeckp)
 		p.metrics["n_dirty_buffs"].WithLabelValues(Instancia.Name).Set(n_dirty_buffs)
 		p.metrics["dskflush_per_sec"].WithLabelValues(Instancia.Name).Set(dskflush_per_sec)
+
+	}
+	rows.Close()
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	rows, err = Instancia.db.Query(`select pingtime from sysdrcb`)
+
+	if err != nil {
+		log.Println("Error in Query hdrping: \n", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&hdrping)
+		if err != nil {
+			log.Println("Error in Scan", err)
+			return err
+		}
+
+		p.metrics["LastHdrPing"].WithLabelValues(Instancia.Name).Set(hdrping)
+
+	}
+	rows.Close()
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	rows, err = Instancia.db.Query(`select lt_time_last_update from sysha_lagtime;`)
+
+	if err != nil {
+		log.Println("Error in Query hdrping: \n", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&LastBackup)
+		if err != nil {
+			log.Println("Error in Scan", err)
+			return err
+		}
+
+		p.metrics["LastBackup"].WithLabelValues(Instancia.Name).Set(LastBackup)
+
+	}
+	rows.Close()
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err = Instancia.db.Query(`select
+	'brt_'||bufsize,
+	((( pagreads + bufwrites ) /nbuffs )
+			/ ( select (ROUND ((( sh_curtime - sh_pfclrtime)/60)/60) )
+					from sysshmvals )
+	) BTR
+	from sysbufpool
+	where bufsize in ("2048","16384");
+	`)
+
+	if err != nil {
+		log.Println("Error in Query btr ratio: \n", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&name, &btr_ratio)
+		if err != nil {
+			log.Println("Error in Scan", err)
+			return err
+		}
+		if _, ok := p.metrics[strings.TrimSpace(name)]; ok {
+			p.metrics[strings.TrimSpace(name)].WithLabelValues(Instancia.Name).Set(btr_ratio)
+		}
 
 	}
 	rows.Close()

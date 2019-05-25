@@ -196,7 +196,7 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	rows, err = Instancia.db.Query(`select pingtime from sysdrcb`)
+	rows, err = Instancia.db.Query(`select lt_time_last_update from sysha_lagtime;`)
 
 	if err != nil {
 		log.Println("Error in Query hdrping: \n", err)
@@ -219,10 +219,11 @@ func queryprofile(p *ProfileMetrics, Instancia Instance) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	rows, err = Instancia.db.Query(`select lt_time_last_update from sysha_lagtime;`)
+	rows, err = Instancia.db.Query(`select first 1 level0 from sysdbstab
+	order by 1 desc`)
 
 	if err != nil {
-		log.Println("Error in Query hdrping: \n", err)
+		log.Println("Error in Query LastBackup: \n", err)
 		return err
 	}
 	defer rows.Close()
